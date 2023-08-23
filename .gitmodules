@@ -1,0 +1,3 @@
+[submodule "note-c"]
+	path = note-c
+	url = ../note-c.git
