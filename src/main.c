@@ -82,7 +82,7 @@ int main(void)
     }
 
     // Application Loop
-    printk("[INFO] main(): Entering loop 3...\n");
+    printk("[INFO] main(): Entering loop...\n");
 
     int16_t *buffer = (int16_t *)malloc(EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE_COBS
         * sizeof(int16_t));
@@ -115,29 +115,22 @@ int main(void)
                 continue;
             }
 
-            printk("Accelerometer reading: x=%lld, y=%lld, z=%lld\n",
-                (sensor_value_to_micro(&accelerometerData[0]) / 10e6),
-                (sensor_value_to_micro(&accelerometerData[1]) / 10e6),
-                (sensor_value_to_micro(&accelerometerData[2]) / 10e6)
-            );
+            int16_t accelX = (int16_t)round(sensor_value_to_double(&accelerometerData[0]));
+            int16_t accelY = (int16_t)round(sensor_value_to_double(&accelerometerData[1]));
+            int16_t accelZ = (int16_t)round(sensor_value_to_double(&accelerometerData[2]));
+            printk("Accelerometer reading: x=%d, y=%d, z=%d\n", accelX, accelY, accelZ);
 
-
-            // buffer[ix] = sensor_value_to_micro(&accelerometerData[0]);
-            // buffer[ix + 1] = sensor_value_to_micro(&accelerometerData[1]);
-            // buffer[ix + 2] = sensor_value_to_micro(&accelerometerData[2]);
+            buffer[ix] = accelX;
+            buffer[ix + 1] = accelY;
+            buffer[ix + 2] = accelZ;
 
             // delayMicroseconds(next_tick_us - micros()); (Arduino)
             int32_t delay_ms = next_tick_ms - NoteGetMs();
             NoteDelayMs(delay_ms < 2 ? delay_ms : 2);
         }
 
-        // testing
-        // char buff[25] = "TJ VanToll";
-        // NoteBinaryTransmit((uint8_t *) buff, 10, sizeof(buff), false);
-
         // send binary data to the Notecard (Arduino)
         // NoteBinaryTransmit(reinterpret_cast<uint8_t *>(buffer),
-        /*
         NoteBinaryReset();
         NoteBinaryTransmit((uint8_t *)buffer,
             (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE * 2),
@@ -162,7 +155,6 @@ int main(void)
             ret = -1;
             break;
         }
-        */
 
         // Wait to iterate
         k_msleep(SLEEP_TIME_MS);
