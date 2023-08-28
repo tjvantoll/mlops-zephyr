@@ -1,0 +1,8 @@
+&i2c1 {
+  status = "okay";
+  lis3dh@18 {
+      compatible = "st,lis3dh", "st,lis2dh";
+      label = "lis3dh";
+      reg = <0x18>;
+  };
+};

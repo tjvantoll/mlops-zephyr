@@ -8,7 +8,9 @@
  */
 
 // Include Zephyr Headers
+#include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/sensor.h>
 #include <zephyr/kernel.h>
 
 // Include Notecard note-c library
@@ -40,6 +42,16 @@ int main(void)
 
     printk("[INFO] main(): Initializing...\n");
 
+    const struct device *const sensor = DEVICE_DT_GET_ANY(st_lis3dh);
+    if (sensor == NULL) {
+        printk("No device found!\n");
+        return 0;
+    }
+    if (!device_is_ready(sensor)) {
+        printk("Device %s is not ready\n", sensor->name);
+        return 0;
+    }
+
     // Initialize note-c hooks
     NoteSetUserAgent((char *)"note-zephyr");
     NoteSetFnDefault(malloc, free, platform_delay, platform_millis);
@@ -68,8 +80,10 @@ int main(void)
 
     // Application Loop
     printk("[INFO] main(): Entering loop 3...\n");
+
     while (1)
     {
+        struct sensor_value accelerometerData[3];
         int16_t buffer[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE_COBS] = {0};
 
         for (size_t ix = 0; ix < (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 2); ix += 3)
@@ -78,15 +92,26 @@ int main(void)
             // uint64_t next_tick_us = micros() + (EI_CLASSIFIER_INTERVAL_MS * 1000);
             uint32_t next_tick_ms = NoteGetMs() + EI_CLASSIFIER_INTERVAL_MS;
 
-            // Eventually I want to make this read from the LIS3DH in Zephyr, but mocking
-            // for now to just try and get COBS working (Arduino)
-            // lis.read();
-            // buffer[ix] = lis.x;
-            // buffer[ix + 1] = lis.y;
-            // buffer[ix + 2] = lis.z;
-            buffer[ix] = 1;
-            buffer[ix + 1] = 2;
-            buffer[ix + 2] = 3;
+            int rc = sensor_sample_fetch(sensor);
+            if (rc != 0) {
+                printk("Failed to fetch sensor data (error: %d)\n", rc);
+                continue;
+            }
+
+            rc = sensor_channel_get(sensor, SENSOR_CHAN_ACCEL_XYZ, accelerometerData);
+            if (rc != 0) {
+                printk("Failed to get sensor data (error: %d)\n", rc);
+                continue;
+            }
+
+            printk("Accelerometer reading: x=%d, y=%d, z=%d\n",
+                sensor_value_to_micro(&accelerometerData[0]),
+                sensor_value_to_micro(&accelerometerData[1]),
+                sensor_value_to_micro(&accelerometerData[2])
+            );
+            buffer[ix] = sensor_value_to_micro(&accelerometerData[0]);
+            buffer[ix + 1] = sensor_value_to_micro(&accelerometerData[1]);
+            buffer[ix + 2] = sensor_value_to_micro(&accelerometerData[2]);
 
             // delayMicroseconds(next_tick_us - micros()); (Arduino)
             int32_t delay_ms = next_tick_ms - NoteGetMs();
