@@ -32,7 +32,7 @@
 #define EI_CLASSIFIER_INTERVAL_MS                1.314060446780552
 #define EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE_COBS (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE + 256)
 
-#define SLEEP_TIME_MS 1000 * 30
+#define SLEEP_TIME_MS 1000 * 10
 
 int main(void)
 {
@@ -72,12 +72,11 @@ int main(void)
     {
         int16_t buffer[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE_COBS] = {0};
 
-        size_t ix = 0;
-        for (; ix < (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 2); ix += 3)
+        for (size_t ix = 0; ix < (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 2); ix += 3)
         {
             // Determine the next tick (and then sleep later) (Arduino)
-            // uint64_t next_tick = micros() + (EI_CLASSIFIER_INTERVAL_MS * 1000);
-            uint32_t next_tick = NoteGetMs() + (EI_CLASSIFIER_INTERVAL_MS * 1000);
+            // uint64_t next_tick_us = micros() + (EI_CLASSIFIER_INTERVAL_MS * 1000);
+            uint32_t next_tick_ms = NoteGetMs() + EI_CLASSIFIER_INTERVAL_MS;
 
             // Eventually I want to make this read from the LIS3DH in Zephyr, but mocking
             // for now to just try and get COBS working (Arduino)
@@ -89,8 +88,9 @@ int main(void)
             buffer[ix + 1] = 2;
             buffer[ix + 2] = 3;
 
-            // delayMicroseconds(next_tick - micros()); (Arduino)
-            NoteDelayMs(next_tick - NoteGetMs());
+            // delayMicroseconds(next_tick_us - micros()); (Arduino)
+            int32_t delay_ms = next_tick_ms - NoteGetMs();
+            NoteDelayMs(delay_ms < 2 ? delay_ms : 2);
         }
 
         // testing
@@ -99,7 +99,7 @@ int main(void)
 
         // send binary data to the Notecard (Arduino)
         // NoteBinaryTransmit(reinterpret_cast<uint8_t *>(buffer),
-
+        NoteBinaryReset();
         NoteBinaryTransmit((uint8_t *)buffer,
             (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE * 2),
             (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE_COBS * 2),
