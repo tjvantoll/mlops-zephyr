@@ -13,6 +13,9 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/kernel.h>
 
+// Include C standard library headers
+#include <string.h>
+
 // Include Notecard note-c library
 #include <note.h>
 
@@ -81,10 +84,18 @@ int main(void)
     // Application Loop
     printk("[INFO] main(): Entering loop 3...\n");
 
+    int16_t *buffer = (int16_t *)malloc(EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE_COBS
+        * sizeof(int16_t));
+    if (!buffer){
+        printk("Failed to allocate memory for classifier buffer.\n");
+        return -1;
+    }
+    memset(buffer, 0, EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE_COBS
+        * sizeof(int16_t));
+
     while (1)
     {
         struct sensor_value accelerometerData[3];
-        int16_t buffer[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE_COBS] = {0};
 
         for (size_t ix = 0; ix < (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 2); ix += 3)
         {
@@ -104,14 +115,16 @@ int main(void)
                 continue;
             }
 
-            printk("Accelerometer reading: x=%d, y=%d, z=%d\n",
-                sensor_value_to_micro(&accelerometerData[0]),
-                sensor_value_to_micro(&accelerometerData[1]),
-                sensor_value_to_micro(&accelerometerData[2])
+            printk("Accelerometer reading: x=%lld, y=%lld, z=%lld\n",
+                (sensor_value_to_micro(&accelerometerData[0]) / 10e6),
+                (sensor_value_to_micro(&accelerometerData[1]) / 10e6),
+                (sensor_value_to_micro(&accelerometerData[2]) / 10e6)
             );
-            buffer[ix] = sensor_value_to_micro(&accelerometerData[0]);
-            buffer[ix + 1] = sensor_value_to_micro(&accelerometerData[1]);
-            buffer[ix + 2] = sensor_value_to_micro(&accelerometerData[2]);
+
+
+            // buffer[ix] = sensor_value_to_micro(&accelerometerData[0]);
+            // buffer[ix + 1] = sensor_value_to_micro(&accelerometerData[1]);
+            // buffer[ix + 2] = sensor_value_to_micro(&accelerometerData[2]);
 
             // delayMicroseconds(next_tick_us - micros()); (Arduino)
             int32_t delay_ms = next_tick_ms - NoteGetMs();
@@ -124,6 +137,7 @@ int main(void)
 
         // send binary data to the Notecard (Arduino)
         // NoteBinaryTransmit(reinterpret_cast<uint8_t *>(buffer),
+        /*
         NoteBinaryReset();
         NoteBinaryTransmit((uint8_t *)buffer,
             (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE * 2),
@@ -148,10 +162,12 @@ int main(void)
             ret = -1;
             break;
         }
+        */
 
         // Wait to iterate
         k_msleep(SLEEP_TIME_MS);
     }
 
+    free(buffer);
     return ret;
 }
