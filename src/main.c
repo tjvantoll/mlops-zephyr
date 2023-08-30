@@ -25,7 +25,7 @@
 
 // Uncomment the define below and replace com.your-company:your-product-name
 // with your ProductUID.
-#define PRODUCT_UID "com.blues.tvantoll:mlops"
+// #define PRODUCT_UID "com.your-company:your-product-name"
 
 #ifndef PRODUCT_UID
 #define PRODUCT_UID ""
