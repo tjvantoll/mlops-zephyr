@@ -14,6 +14,7 @@
 #include <zephyr/kernel.h>
 
 // Include C standard library headers
+#include <math.h>
 #include <string.h>
 
 // Include Notecard note-c library
@@ -84,14 +85,14 @@ int main(void)
     // Application Loop
     printk("[INFO] main(): Entering loop...\n");
 
-    int16_t *buffer = (int16_t *)malloc(EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE_COBS
-        * sizeof(int16_t));
+    float *buffer = (float *)malloc(EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE_COBS
+        * sizeof(float));
     if (!buffer){
         printk("Failed to allocate memory for classifier buffer.\n");
         return -1;
     }
     memset(buffer, 0, EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE_COBS
-        * sizeof(int16_t));
+        * sizeof(float));
 
     while (1)
     {
@@ -99,8 +100,7 @@ int main(void)
 
         for (size_t ix = 0; ix < (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 2); ix += 3)
         {
-            // Determine the next tick (and then sleep later) (Arduino)
-            // uint64_t next_tick_us = micros() + (EI_CLASSIFIER_INTERVAL_MS * 1000);
+            // Determine the next tick (and then sleep later)
             uint32_t next_tick_ms = NoteGetMs() + EI_CLASSIFIER_INTERVAL_MS;
 
             int rc = sensor_sample_fetch(sensor);
@@ -115,32 +115,31 @@ int main(void)
                 continue;
             }
 
-            int16_t accelX = (int16_t)round(sensor_value_to_double(&accelerometerData[0]));
-            int16_t accelY = (int16_t)round(sensor_value_to_double(&accelerometerData[1]));
-            int16_t accelZ = (int16_t)round(sensor_value_to_double(&accelerometerData[2]));
-            printk("Accelerometer reading: x=%d, y=%d, z=%d\n", accelX, accelY, accelZ);
+            float x = sensor_value_to_float(&accelerometerData[0]);
+            float y = sensor_value_to_float(&accelerometerData[1]);
+            float z = sensor_value_to_float(&accelerometerData[2]);
+            printk("x: %f, y: %f, z: %f\n", x, y, z);
 
-            buffer[ix] = accelX;
-            buffer[ix + 1] = accelY;
-            buffer[ix + 2] = accelZ;
+            buffer[ix] = x;
+            buffer[ix + 1] = y;
+            buffer[ix + 2] = z;
 
-            // delayMicroseconds(next_tick_us - micros()); (Arduino)
             int32_t delay_ms = next_tick_ms - NoteGetMs();
             NoteDelayMs(delay_ms < 2 ? delay_ms : 2);
         }
 
-        // send binary data to the Notecard (Arduino)
-        // NoteBinaryTransmit(reinterpret_cast<uint8_t *>(buffer),
+        // Send binary data to the Notecard
         NoteBinaryReset();
         NoteBinaryTransmit((uint8_t *)buffer,
-            (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE * 2),
-            (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE_COBS * 2),
+            (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE * sizeof(float)),
+            (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE_COBS * sizeof(float)),
             0);
 
         J *req = NoteNewRequest("web.post");
         if (req)
         {
             JAddStringToObject(req, "route", "ingest");
+            JAddStringToObject(req, "content", "binary/octet-stream");
             JAddBoolToObject(req, "binary", true);
             if (!NoteRequest(req))
             {
