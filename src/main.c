@@ -38,7 +38,7 @@
 #define EI_CLASSIFIER_INTERVAL_MS                1.314060446780552
 #define EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE_COBS (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE + 256)
 
-#define SLEEP_TIME_MS 1000 * 10
+#define SLEEP_TIME_MS 1000 * 60
 
 int main(void)
 {
@@ -63,23 +63,45 @@ int main(void)
     NoteSetFnI2C(NOTE_I2C_ADDR_DEFAULT, NOTE_I2C_MAX_DEFAULT, note_i2c_reset,
                  note_i2c_transmit, note_i2c_receive);
 
-    // Send a Notecard hub.set using note-c
-    J *req = NoteNewRequest("hub.set");
-    if (req)
+    // Perform a hub.set request on the Notecard using note-c
     {
-        JAddStringToObject(req, "product", PRODUCT_UID);
-        JAddStringToObject(req, "mode", "continuous");
-        JAddStringToObject(req, "sn", "tj-accelerometer");
-        if (!NoteRequest(req))
+        J *req = NoteNewRequest("hub.set");
+        if (req)
         {
-            printk("Failed to configure Notecard.\n");
+            JAddStringToObject(req, "product", PRODUCT_UID);
+            JAddStringToObject(req, "mode", "continuous");
+            JAddStringToObject(req, "sn", "your-device-name");
+            if (!NoteRequest(req))
+            {
+                printk("Failed to configure Notecard with hub.set\n");
+                return -1;
+            }
+        }
+        else
+        {
+            printk("Failed to allocate memory.\n");
             return -1;
         }
     }
-    else
+
+    // Perform a card.dfu request on the Notecard using note-c
     {
-        printk("Failed to allocate memory.\n");
-        return -1;
+        J *req = NoteNewRequest("card.dfu");
+        if (req)
+        {
+            JAddStringToObject(req, "name", "stm32");
+            JAddBoolToObject(req, "on", true);
+            if (!NoteRequest(req))
+            {
+                printk("Failed to configure with card.dfu\n");
+                return -1;
+            }
+        }
+        else
+        {
+            printk("Failed to allocate memory.\n");
+            return -1;
+        }
     }
 
     // Application Loop
@@ -98,7 +120,8 @@ int main(void)
     {
         struct sensor_value accelerometerData[3];
 
-        for (size_t ix = 0; ix < (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 2); ix += 3)
+        for (size_t ix = 0; ix < (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 2);
+            ix += EI_CLASSIFIER_RAW_SAMPLES_PER_FRAME)
         {
             // Determine the next tick (and then sleep later)
             uint32_t next_tick_ms = NoteGetMs() + EI_CLASSIFIER_INTERVAL_MS;
