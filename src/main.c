@@ -152,8 +152,8 @@ int main(void)
         }
 
         // Send binary data to the Notecard
-        NoteBinaryReset();
-        NoteBinaryTransmit((uint8_t *)buffer,
+        NoteBinaryStoreReset();
+        NoteBinaryStoreTransmit((uint8_t *)buffer,
             (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE * sizeof(float)),
             (EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE_COBS * sizeof(float)),
             0);
